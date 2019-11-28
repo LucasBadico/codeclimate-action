@@ -7,10 +7,6 @@ import { exec as originalExec } from 'child_process';
 
 const exec = util.promisify(originalExec);
 
-// import { debug, error, setFailed, getInput } from '@actions/core';
-// import { exec } from '@actions/exec';
-// import { ExecOptions } from '@actions/exec/lib/interfaces';
-
 const debug = console.log;
 const error = console.error;
 
@@ -83,9 +79,9 @@ export function run(
     const execOpts = {
       env: await prepareEnv(),
     };
-    
+    debug('env vars', execOpts.env)
     try {
-      await exec(`${executable} before-build`, execOpts);
+      await exec(`${executable} before-build`, execOpts).then(debug);
       debug('✅ CC Reporter before-build checkin completed...');
     } catch (err) {
       error(err);
@@ -93,7 +89,7 @@ export function run(
       return reject(err);
     }
     try {
-      await exec(coverageCommand, execOpts);
+      await exec(coverageCommand, execOpts).then(debug);
       debug('✅ Coverage run completed...');
     } catch (err) {
       error(err);
@@ -101,15 +97,16 @@ export function run(
       return reject(err);
     }
     try {
-      const commands = ['after-build', '--exit-code', lastExitCode.toString()];
+      const commands = ['after-build'];
       if (codeClimateDebug === 'true') commands.push('--debug');
-      await exec(`${executable} ${commands.join(' ')}`, execOpts);
+      await exec(`${executable} after-build}`, execOpts).then(debug);
       debug('✅ CC Reporter after-build checkin completed!');
-      return resolve();
     } catch (err) {
       error(err);
       error('🚨 CC Reporter after-build checkin failed!');
       return reject(err);
     }
+    return resolve();
+
   });
 }
