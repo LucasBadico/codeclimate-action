@@ -1,14 +1,34 @@
 import { platform } from 'os';
 import { createWriteStream } from 'fs';
 import fetch from 'node-fetch';
-import { debug, error, setFailed, getInput } from '@actions/core';
-import { exec } from '@actions/exec';
-import { ExecOptions } from '@actions/exec/lib/interfaces';
+import util from 'util';
+import fs from 'fs';
+import { exec as originalExec } from 'child_process';
+
+const exec = util.promisify(originalExec);
+
+// import { debug, error, setFailed, getInput } from '@actions/core';
+// import { exec } from '@actions/exec';
+// import { ExecOptions } from '@actions/exec/lib/interfaces';
+
+const debug = console.log;
+const error = console.error;
 
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
 const EXECUTABLE = './cc-reporter';
 const DEFAULT_COVERAGE_COMMAND = 'yarn coverage';
-const DEFAULT_CODECLIMATE_DEBUG = 'false';
+const DEFAULT_CODECLIMATE_DEBUG = 'true';
+
+const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
+
+function getCommitSHA() {
+  return execComandStdout('git rev-parse HEAD');
+}
+
+async function getBranch() {
+  const lines = await execComandStdout('git rev-parse --abbrev-ref HEAD');
+  return lines.split('\n')[0];
+}
 
 export function downloadToFile(
   url: string,
@@ -29,17 +49,15 @@ export function downloadToFile(
   });
 }
 
-function prepareEnv() {
+async function prepareEnv() {
   const env = process.env as { [key: string]: string };
-
-  if (process.env.GITHUB_SHA !== undefined)
-    env.GIT_COMMIT_SHA = process.env.GITHUB_SHA;
-  if (process.env.GITHUB_REF !== undefined)
-    env.GIT_BRANCH = process.env.GITHUB_REF;
-
-  if (env.GIT_BRANCH)
-    env.GIT_BRANCH = env.GIT_BRANCH.replace(/^refs\/heads\//, ''); // Remove 'refs/heads/' prefix (See https://github.com/paambaati/codeclimate-action/issues/42)
-  return env;
+  const GIT_BRANCH = await getBranch();
+  const GIT_COMMIT_SHA = await getCommitSHA();
+  return {
+    ...env,
+    GIT_BRANCH,
+    GIT_COMMIT_SHA,
+  };
 }
 
 export function run(
@@ -52,22 +70,26 @@ export function run(
     let lastExitCode = 1;
     try {
       debug(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
-      await downloadToFile(downloadUrl, executable);
-      debug('✅ CC Reporter downloaded...');
+      if (!fs.existsSync(EXECUTABLE)) {
+        await downloadToFile(downloadUrl, executable);
+        debug('✅ CC Reporter downloaded...');
+      }
     } catch (err) {
       error(err.message);
-      setFailed('🚨 CC Reporter download failed!');
+      error('🚨 CC Reporter download failed!');
       return reject(err);
     }
-    const execOpts: ExecOptions = {
-      env: prepareEnv()
+
+    const execOpts = {
+      env: await prepareEnv(),
     };
+    
     try {
       lastExitCode = await exec(executable, ['before-build'], execOpts);
       debug('✅ CC Reporter before-build checkin completed...');
     } catch (err) {
       error(err);
-      setFailed('🚨 CC Reporter before-build checkin failed!');
+      error('🚨 CC Reporter before-build checkin failed!');
       return reject(err);
     }
     try {
@@ -78,7 +100,7 @@ export function run(
       debug('✅ Coverage run completed...');
     } catch (err) {
       error(err);
-      setFailed('🚨 Coverage run failed!');
+      error('🚨 Coverage run failed!');
       return reject(err);
     }
     try {
@@ -89,16 +111,10 @@ export function run(
       return resolve();
     } catch (err) {
       error(err);
-      setFailed('🚨 CC Reporter after-build checkin failed!');
+      error('🚨 CC Reporter after-build checkin failed!');
       return reject(err);
     }
   });
 }
 
-if (!module.parent) {
-  let coverageCommand = getInput('coverageCommand', { required: false });
-  if (!coverageCommand.length) coverageCommand = DEFAULT_COVERAGE_COMMAND;
-  let codeClimateDebug = getInput('debug', { required: false });
-  if (!coverageCommand.length) codeClimateDebug = DEFAULT_CODECLIMATE_DEBUG;
-  run(DOWNLOAD_URL, EXECUTABLE, coverageCommand, codeClimateDebug);
-}
+run();
