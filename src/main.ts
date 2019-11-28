@@ -7,28 +7,25 @@ import { exec as originalExec } from 'child_process';
 
 const exec = util.promisify(originalExec);
 
-
 const DEFAULT_CODECLIMATE_DEBUG = 'false';
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
 const EXECUTABLE = './cc-reporter';
 const DEFAULT_COVERAGE_COMMAND = 'yarn test';
 
-const debug = (debug) => (...args) => debug !== 'false'  && console.log(...args);
-const error = (debug) => (...args) => debug !== 'false'  && console.error(...args);
-const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
+const debug = debug => (...args) => debug !== 'false' && console.log(...args);
+const error = debug => (...args) => debug !== 'false' && console.error(...args);
+const execComandStdout = command => exec(command).then(({ stdout }) => stdout);
 function cleanUpFromStdout(response) {
   return response.split('\n')[0];
 }
 async function getCommitSHA() {
-  return cleanUpFromStdout(
-    await execComandStdout('git rev-parse HEAD')
-  );
+  return cleanUpFromStdout(await execComandStdout('git rev-parse HEAD'));
 }
 
 async function getBranch() {
   return cleanUpFromStdout(
     await execComandStdout('git rev-parse --abbrev-ref HEAD')
-  )
+  );
 }
 
 export function downloadToFile(
@@ -57,7 +54,7 @@ async function prepareEnv() {
   return {
     ...env,
     GIT_BRANCH,
-    GIT_COMMIT_SHA,
+    GIT_COMMIT_SHA
   };
 }
 
@@ -69,7 +66,9 @@ export function run(
 ): Promise<void> {
   return new Promise(async (resolve, reject) => {
     try {
-      debug(codeClimateDebug)(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
+      debug(codeClimateDebug)(
+        `ℹ️ Downloading CC Reporter from ${downloadUrl} ...`
+      );
       if (!fs.existsSync(EXECUTABLE)) {
         await downloadToFile(downloadUrl, executable);
         debug(codeClimateDebug)('✅ CC Reporter downloaded...');
@@ -81,12 +80,14 @@ export function run(
     }
 
     const execOpts = {
-      env: await prepareEnv(),
+      env: await prepareEnv()
     };
-    debug(codeClimateDebug)('env vars', execOpts.env)
+    debug(codeClimateDebug)('env vars', execOpts.env);
     try {
       await exec(`${executable} before-build`, execOpts).then(debug);
-      debug(codeClimateDebug)('✅ CC Reporter before-build checkin completed...');
+      debug(codeClimateDebug)(
+        '✅ CC Reporter before-build checkin completed...'
+      );
     } catch (err) {
       error(codeClimateDebug)(err);
       error(codeClimateDebug)('🚨 CC Reporter before-build checkin failed!');
@@ -111,6 +112,5 @@ export function run(
       return reject(err);
     }
     return resolve();
-
   });
 }
