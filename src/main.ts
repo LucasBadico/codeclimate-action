@@ -19,7 +19,7 @@ export function run(
 ): Promise<string> {
   const silentMode = parseBoolean(silentFlag);
   const debugMode = parseBoolean(debugFlag);
-
+  let testsFailing = true;
   const handleDebug = (...args) => {
     if (!debugMode) return true;
     if (silentMode) return console.log(args[0]);
@@ -65,10 +65,16 @@ export function run(
       );
     }
     try {
-      const data = await exec(coverageCommand, execOpts).catch(err => {
-        if (silentMode) return '🚨 Failed tests, but keeping the reporter ...';
-        throw err;
-      });
+      const data = await exec(coverageCommand, execOpts)
+        .then(data => {
+          testsFailing = false;
+          return data;
+        })
+        .catch(err => {
+          if (silentMode)
+            return '🚨 Failed tests, but keeping the reporter ...';
+          throw err;
+        });
       handleDebug('✅ Coverage run completed...', data);
     } catch (err) {
       return handleError('🚨 Coverage run failed!', err, reject, resolve);
@@ -86,6 +92,10 @@ export function run(
         resolve
       );
     }
-    return resolve('✅ Coverage report sended to codeclimate');
+    if (testsFailing)
+      return resolve(
+        '🚨 Tests failing, but coverage report sent to codeclimate'
+      );
+    return resolve('✅ Tests passing and coverage report sent to codeclimate');
   });
 }
