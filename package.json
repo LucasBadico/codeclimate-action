@@ -10,7 +10,7 @@
         "format:check": "prettier --check src/*.ts test/*.ts"
     },
     "bin": {
-        "send-coverage": "./lib/main.js"
+        "send-coverage": "./bin/send-coverage.js"
     },
     "repository": {
         "type": "git",

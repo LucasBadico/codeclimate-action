@@ -116,5 +116,3 @@ export function run(
     }
   });
 }
-
-run();
