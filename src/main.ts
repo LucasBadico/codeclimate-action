@@ -7,7 +7,6 @@ import { exec as originalExec } from 'child_process';
 
 const exec = util.promisify(originalExec);
 
-const error = console.error;
 
 const DEFAULT_CODECLIMATE_DEBUG = 'false';
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
@@ -15,6 +14,7 @@ const EXECUTABLE = './cc-reporter';
 const DEFAULT_COVERAGE_COMMAND = 'yarn test';
 
 const debug = (debug) => (...args) => debug !== 'false'  && console.log(...args);
+const error = (debug) => (...args) => debug !== 'false'  && console.error(...args);
 const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
 function cleanUpFromStdout(response) {
   return response.split('\n')[0];
@@ -72,11 +72,11 @@ export function run(
       debug(codeClimateDebug)(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
       if (!fs.existsSync(EXECUTABLE)) {
         await downloadToFile(downloadUrl, executable);
-        debug('✅ CC Reporter downloaded...');
+        debug(codeClimateDebug)('✅ CC Reporter downloaded...');
       }
     } catch (err) {
-      error(err.message);
-      error('🚨 CC Reporter download failed!');
+      error(codeClimateDebug)(err.message);
+      error(codeClimateDebug)('🚨 CC Reporter download failed!');
       return reject(err);
     }
 
@@ -88,16 +88,16 @@ export function run(
       await exec(`${executable} before-build`, execOpts).then(debug);
       debug(codeClimateDebug)('✅ CC Reporter before-build checkin completed...');
     } catch (err) {
-      error(err);
-      error('🚨 CC Reporter before-build checkin failed!');
+      error(codeClimateDebug)(err);
+      error(codeClimateDebug)('🚨 CC Reporter before-build checkin failed!');
       return reject(err);
     }
     try {
       await exec(coverageCommand, execOpts).then(debug);
       debug(codeClimateDebug)('✅ Coverage run completed...');
     } catch (err) {
-      error(err);
-      error('🚨 Coverage run failed!');
+      error(codeClimateDebug)(err);
+      error(codeClimateDebug)('🚨 Coverage run failed!');
       return reject(err);
     }
     try {
@@ -106,8 +106,8 @@ export function run(
       await exec(`${executable} after-build`, execOpts).then(debug);
       debug(codeClimateDebug)('✅ CC Reporter after-build checkin completed!');
     } catch (err) {
-      error(err);
-      error('🚨 CC Reporter after-build checkin failed!');
+      error(codeClimateDebug)(err);
+      error(codeClimateDebug)('🚨 CC Reporter after-build checkin failed!');
       return reject(err);
     }
     return resolve();
