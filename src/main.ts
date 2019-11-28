@@ -16,14 +16,19 @@ const DEFAULT_COVERAGE_COMMAND = 'yarn test';
 const DEFAULT_CODECLIMATE_DEBUG = 'true';
 
 const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
-
+function cleanUpFromStdout(response) {
+  return response.split('\n')[0];
+}
 function getCommitSHA() {
-  return execComandStdout('git rev-parse HEAD');
+  return cleanUpFromStdout(
+    execComandStdout('git rev-parse HEAD')
+  );
 }
 
 async function getBranch() {
-  const lines = await execComandStdout('git rev-parse --abbrev-ref HEAD');
-  return lines.split('\n')[0];
+  return cleanUpFromStdout(
+    await execComandStdout('git rev-parse --abbrev-ref HEAD')
+  )
 }
 
 export function downloadToFile(
