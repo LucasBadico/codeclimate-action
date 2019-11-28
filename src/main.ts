@@ -65,7 +65,10 @@ export function run(
       );
     }
     try {
-      const data = await exec(coverageCommand, execOpts);
+      const data = await exec(coverageCommand, execOpts).catch(err => {
+        if (silentMode) return '🚨 Failed tests, but keeping the reporter ...';
+        throw err;
+      });
       handleDebug('✅ Coverage run completed...', data);
     } catch (err) {
       return handleError('🚨 Coverage run failed!', err, reject, resolve);
