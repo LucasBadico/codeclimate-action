@@ -16,7 +16,7 @@ const error = console.error;
 
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
 const EXECUTABLE = './cc-reporter';
-const DEFAULT_COVERAGE_COMMAND = 'yarn coverage';
+const DEFAULT_COVERAGE_COMMAND = 'yarn test';
 const DEFAULT_CODECLIMATE_DEBUG = 'true';
 
 const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
@@ -85,7 +85,7 @@ export function run(
     };
     
     try {
-      lastExitCode = await exec(`${executable} before-build`, execOpts).then(() => 0);
+      await exec(`${executable} before-build`, execOpts);
       debug('✅ CC Reporter before-build checkin completed...');
     } catch (err) {
       error(err);
@@ -93,10 +93,7 @@ export function run(
       return reject(err);
     }
     try {
-      lastExitCode = await exec(coverageCommand, execOpts).then(() => 0);
-      if (lastExitCode !== 0) {
-        throw new Error(`Coverage run exited with code ${lastExitCode}`);
-      }
+      await exec(coverageCommand, execOpts);
       debug('✅ Coverage run completed...');
     } catch (err) {
       error(err);
