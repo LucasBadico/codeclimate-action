@@ -15,7 +15,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/paambaati/codeclimate-action.git"
+        "url": "git+https://github.com/semeietech/codeclimate-action.git"
     },
     "keywords": [
         "actions",
