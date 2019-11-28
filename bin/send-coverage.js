@@ -14,7 +14,8 @@ const args = [
     COVERAGE_COMMAND,
     DEBUG,
     SILENT_MODE,
-]
+];
+
 run(...args)
     .then(msg => console.log(msg))
     .catch( msg => console.error(msg));
