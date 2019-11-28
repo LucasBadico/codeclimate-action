@@ -6,7 +6,8 @@ const {
         COVERAGE_COMMAND,
         SILENT_MODE,
     }
-}
+} = process;
+
 const args = [
     undefined, // downloadURL
     undefined, // Executable
