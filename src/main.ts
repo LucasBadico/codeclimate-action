@@ -99,7 +99,7 @@ export function run(
     try {
       const commands = ['after-build'];
       if (codeClimateDebug === 'true') commands.push('--debug');
-      await exec(`${executable} after-build}`, execOpts).then(debug);
+      await exec(`${executable} after-build`, execOpts).then(debug);
       debug('✅ CC Reporter after-build checkin completed!');
     } catch (err) {
       error(err);
