@@ -10,6 +10,9 @@
         "format": "prettier --write src/*.ts test/*.ts",
         "format:check": "prettier --check src/*.ts test/*.ts"
     },
+    "bin": {
+        "send-coverage": "lib/main.js"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/paambaati/codeclimate-action.git"
