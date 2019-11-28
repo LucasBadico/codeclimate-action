@@ -1,4 +1,4 @@
 #! /usr/bin/env node
-const run = require('./lib/main');
+const run = require('../lib/main');
 
 run();
