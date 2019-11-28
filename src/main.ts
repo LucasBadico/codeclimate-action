@@ -7,14 +7,14 @@ import { exec as originalExec } from 'child_process';
 
 const exec = util.promisify(originalExec);
 
-const debug = console.log;
 const error = console.error;
 
+const DEFAULT_CODECLIMATE_DEBUG = 'false';
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
 const EXECUTABLE = './cc-reporter';
 const DEFAULT_COVERAGE_COMMAND = 'yarn test';
-const DEFAULT_CODECLIMATE_DEBUG = 'true';
 
+const debug = (debug) => (...args) => debug !== 'false'  && console.log(...args);
 const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout);
 function cleanUpFromStdout(response) {
   return response.split('\n')[0];
@@ -68,9 +68,8 @@ export function run(
   codeClimateDebug: string = DEFAULT_CODECLIMATE_DEBUG
 ): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    let lastExitCode = 1;
     try {
-      debug(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
+      debug(codeClimateDebug)(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
       if (!fs.existsSync(EXECUTABLE)) {
         await downloadToFile(downloadUrl, executable);
         debug('✅ CC Reporter downloaded...');
@@ -84,10 +83,10 @@ export function run(
     const execOpts = {
       env: await prepareEnv(),
     };
-    debug('env vars', execOpts.env)
+    debug(codeClimateDebug)('env vars', execOpts.env)
     try {
       await exec(`${executable} before-build`, execOpts).then(debug);
-      debug('✅ CC Reporter before-build checkin completed...');
+      debug(codeClimateDebug)('✅ CC Reporter before-build checkin completed...');
     } catch (err) {
       error(err);
       error('🚨 CC Reporter before-build checkin failed!');
@@ -95,7 +94,7 @@ export function run(
     }
     try {
       await exec(coverageCommand, execOpts).then(debug);
-      debug('✅ Coverage run completed...');
+      debug(codeClimateDebug)('✅ Coverage run completed...');
     } catch (err) {
       error(err);
       error('🚨 Coverage run failed!');
@@ -105,7 +104,7 @@ export function run(
       const commands = ['after-build'];
       if (codeClimateDebug === 'true') commands.push('--debug');
       await exec(`${executable} after-build`, execOpts).then(debug);
-      debug('✅ CC Reporter after-build checkin completed!');
+      debug(codeClimateDebug)('✅ CC Reporter after-build checkin completed!');
     } catch (err) {
       error(err);
       error('🚨 CC Reporter after-build checkin failed!');
