@@ -19,9 +19,9 @@ const execComandStdout = (command) => exec(command).then(({ stdout }) => stdout)
 function cleanUpFromStdout(response) {
   return response.split('\n')[0];
 }
-function getCommitSHA() {
+async function getCommitSHA() {
   return cleanUpFromStdout(
-    execComandStdout('git rev-parse HEAD')
+    await execComandStdout('git rev-parse HEAD')
   );
 }
 
