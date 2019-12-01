@@ -1,30 +1,33 @@
-# codeclimate-action
+# codeclimate-hook
 
-[![Build Status](https://github.com/paambaati/codeclimate-action/workflows/PR%20Checks/badge.svg)](https://actions-badge.atrox.dev/paambaati/codeclimate-action/goto) [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A GitHub action that publishes your code coverage to [Code Climate](http://codeclimate.com/).
+A hook, with `send-coverage` command, that send the corevage report to [Code Climate](http://codeclimate.com/).
 
 ## Usage
-This action requires that you set the [`CC_TEST_REPORTER_ID`](https://docs.codeclimate.com/docs/configuring-test-coverage) environment variable. You can find it under Repo Settings in your Code Climate project.
-
-### Inputs
-
-| Input             | Default         | Description                                                                        |
-|-------------------|-----------------|------------------------------------------------------------------------------------|
-| `coverageCommand` | `yarn coverage` | The actual command that should be executed to run your tests and capture coverage. |
-| `debug`           | `false`         | Enable Code Coverage debug output when set to `true`.                              |
-
-#### Example
-
-```yaml
-steps:
-- name: Test & publish code coverage
-  uses: paambaati/codeclimate-action@v2.3.0
-  env:
-    CC_TEST_REPORTER_ID: <code_climate_reporter_id>
-  with:
-    coverageCommand: npm run coverage
-    debug: true
+### Setup the coverage command:
+```json
+"coverage": "CC_TEST_REPORTER_ID=YOUR_REPORTID yarn send-coverage",
 ```
 
-Example project — [paambaati/websight](https://github.com/paambaati/websight/blob/663bd4245b3c2dbd768aff9bfc197103ee77973e/.github/workflows/ci.yml#L33-L49)
+#### Use in the hook helper(in this case husky):
+```json
+"husky": {
+    "hooks": {
+      "pre-push": "yarn coverage"
+    }
+  },
+```
+
+#### Or call it manually:
+
+```bash
+yarn coverage
+```
+
+### ENV VARIABLES
+
+- [`CC_TEST_REPORTER_ID`](https://docs.codeclimate.com/docs/configuring-test-coverage) [required]: You can find it under Repo Settings in your Code Climate project.
+- `DEBUG` [default: `false`]: useful for initial configuration.
+- `COVERAGE_COMMAND` [default: `yarn test` ]: The command that runs the tests and generate the coverage report.
+- `SILENT_MODE` [default: `true`]: For not breaking any flow if anything goes wrong, so if you setup a `pre-commit` hook and you don't want your time to kill you when any tests breaks or they are with no internet to send the report.
