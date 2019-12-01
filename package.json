@@ -1,6 +1,6 @@
 {
     "name": "codeclimate-hook",
-    "version": "0.4.3",
+    "version": "1.0.0",
     "description": "Publish code coverage to Code Climate",
     "main": "./lib/main.js",
     "scripts": {
