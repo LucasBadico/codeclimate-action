@@ -1,104 +1,101 @@
 import { platform } from 'os';
-import { createWriteStream } from 'fs';
-import fetch from 'node-fetch';
-import { debug, error, setFailed, getInput } from '@actions/core';
-import { exec } from '@actions/exec';
-import { ExecOptions } from '@actions/exec/lib/interfaces';
+import { existsSync } from 'fs';
+import { parseBoolean, downloadToFile } from './helpers';
+import { prepareEnv } from './env-helpers';
+import { exec } from './exec-helpers';
 
+const DEFAULT_CODECLIMATE_DEBUG = 'false';
 const DOWNLOAD_URL = `https://codeclimate.com/downloads/test-reporter/test-reporter-latest-${platform()}-amd64`;
 const EXECUTABLE = './cc-reporter';
-const DEFAULT_COVERAGE_COMMAND = 'yarn coverage';
-const DEFAULT_CODECLIMATE_DEBUG = 'false';
-
-export function downloadToFile(
-  url: string,
-  file: string,
-  mode: number = 0o755
-): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const response = await fetch(url, { timeout: 2 * 60 * 1000 }); // Timeout in 2 minutes.
-      const writer = createWriteStream(file, { mode });
-      response.body.pipe(writer);
-      writer.on('close', () => {
-        return resolve();
-      });
-    } catch (err) {
-      return reject(err);
-    }
-  });
-}
-
-function prepareEnv() {
-  const env = process.env as { [key: string]: string };
-
-  if (process.env.GITHUB_SHA !== undefined)
-    env.GIT_COMMIT_SHA = process.env.GITHUB_SHA;
-  if (process.env.GITHUB_REF !== undefined)
-    env.GIT_BRANCH = process.env.GITHUB_REF;
-
-  if (env.GIT_BRANCH)
-    env.GIT_BRANCH = env.GIT_BRANCH.replace(/^refs\/heads\//, ''); // Remove 'refs/heads/' prefix (See https://github.com/paambaati/codeclimate-action/issues/42)
-  return env;
-}
+const DEFAULT_COVERAGE_COMMAND = 'yarn test';
+const DEFAULT_SILENT_FLAG = 'true';
 
 export function run(
   downloadUrl: string = DOWNLOAD_URL,
   executable: string = EXECUTABLE,
   coverageCommand: string = DEFAULT_COVERAGE_COMMAND,
-  codeClimateDebug: string = DEFAULT_CODECLIMATE_DEBUG
-): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    let lastExitCode = 1;
-    try {
-      debug(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
-      await downloadToFile(downloadUrl, executable);
-      debug('✅ CC Reporter downloaded...');
-    } catch (err) {
-      error(err.message);
-      setFailed('🚨 CC Reporter download failed!');
-      return reject(err);
-    }
-    const execOpts: ExecOptions = {
-      env: prepareEnv()
-    };
-    try {
-      lastExitCode = await exec(executable, ['before-build'], execOpts);
-      debug('✅ CC Reporter before-build checkin completed...');
-    } catch (err) {
-      error(err);
-      setFailed('🚨 CC Reporter before-build checkin failed!');
-      return reject(err);
-    }
-    try {
-      lastExitCode = await exec(coverageCommand, undefined, execOpts);
-      if (lastExitCode !== 0) {
-        throw new Error(`Coverage run exited with code ${lastExitCode}`);
-      }
-      debug('✅ Coverage run completed...');
-    } catch (err) {
-      error(err);
-      setFailed('🚨 Coverage run failed!');
-      return reject(err);
-    }
-    try {
-      const commands = ['after-build', '--exit-code', lastExitCode.toString()];
-      if (codeClimateDebug === 'true') commands.push('--debug');
-      await exec(executable, commands, execOpts);
-      debug('✅ CC Reporter after-build checkin completed!');
-      return resolve();
-    } catch (err) {
-      error(err);
-      setFailed('🚨 CC Reporter after-build checkin failed!');
-      return reject(err);
-    }
-  });
-}
+  debugFlag: string = DEFAULT_CODECLIMATE_DEBUG,
+  silentFlag: string = DEFAULT_SILENT_FLAG
+): Promise<string> {
+  const silentMode = parseBoolean(silentFlag);
+  const debugMode = parseBoolean(debugFlag);
+  let testsFailing = true;
+  const handleDebug = (...args) => {
+    if (!debugMode) return true;
+    if (silentMode) return console.log(args[0]);
+    return console.log(...args);
+  };
 
-if (!module.parent) {
-  let coverageCommand = getInput('coverageCommand', { required: false });
-  if (!coverageCommand.length) coverageCommand = DEFAULT_COVERAGE_COMMAND;
-  let codeClimateDebug = getInput('debug', { required: false });
-  if (!coverageCommand.length) codeClimateDebug = DEFAULT_CODECLIMATE_DEBUG;
-  run(DOWNLOAD_URL, EXECUTABLE, coverageCommand, codeClimateDebug);
+  const handleError = (message, err, error, success) => {
+    if (debugMode) console.error(message);
+    if (silentMode)
+      return success(`${message}, report not sent to codeclimate.`, err);
+    return error(message, err);
+  };
+
+  return new Promise(async (resolve, reject) => {
+    try {
+      handleDebug(`ℹ️ Downloading CC Reporter from ${downloadUrl} ...`);
+      if (!existsSync(EXECUTABLE)) {
+        const data = await downloadToFile(downloadUrl, executable);
+        handleDebug('✅ CC Reporter downloaded...', data);
+      }
+    } catch (err) {
+      return handleError(
+        '🚨 CC Reporter download failed!',
+        err,
+        reject,
+        resolve
+      );
+    }
+
+    const execOpts = {
+      env: await prepareEnv()
+    };
+    handleDebug('ℹ️ Env', execOpts.env);
+    try {
+      const data = await exec(`${executable} before-build`, execOpts);
+      handleDebug('✅ CC Reporter before-build checkin completed...', data);
+    } catch (err) {
+      return handleError(
+        '🚨 CC Reporter before-build checkin failed!',
+        err,
+        reject,
+        resolve
+      );
+    }
+    try {
+      const data = await exec(coverageCommand, execOpts)
+        .then(data => {
+          testsFailing = false;
+          return data;
+        })
+        .catch(err => {
+          if (silentMode)
+            return '🚨 Failed tests, but keeping the reporter ...';
+          throw err;
+        });
+      handleDebug('✅ Coverage run completed...', data);
+    } catch (err) {
+      return handleError('🚨 Coverage run failed!', err, reject, resolve);
+    }
+    try {
+      const commands = ['after-build'];
+      if (debugFlag === 'true') commands.push('--debug');
+      const data = await exec(`${executable} after-build`, execOpts);
+      handleDebug('✅ CC Reporter after-build checkin completed!', data);
+    } catch (err) {
+      return handleError(
+        '🚨 CC Reporter after-build checkin failed!',
+        err,
+        reject,
+        resolve
+      );
+    }
+    if (testsFailing)
+      return resolve(
+        '🚨 Tests failing, but coverage report sent to codeclimate'
+      );
+    return resolve('✅ Tests passing and coverage report sent to codeclimate');
+  });
 }

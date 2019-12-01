@@ -1,18 +1,20 @@
 {
-    "name": "codeclimate-action",
-    "version": "2.3.0",
-    "private": true,
+    "name": "codeclimate-hook",
+    "version": "0.4.3",
     "description": "Publish code coverage to Code Climate",
-    "main": "lib/main.js",
+    "main": "./lib/main.js",
     "scripts": {
         "build": "tsc",
-        "test": "tape -r ts-node/register/transpile-only test/*.test.ts",
+        "test": "echo 0",
         "format": "prettier --write src/*.ts test/*.ts",
         "format:check": "prettier --check src/*.ts test/*.ts"
     },
+    "bin": {
+        "send-coverage": "./bin/send-coverage.js"
+    },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/paambaati/codeclimate-action.git"
+        "url": "git+https://github.com/lucasbadico/codeclimate-hook.git"
     },
     "keywords": [
         "actions",
