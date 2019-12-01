@@ -17,16 +17,13 @@
         "url": "git+https://github.com/lucasbadico/codeclimate-hook.git"
     },
     "keywords": [
-        "actions",
         "codeclimate",
         "quality",
         "coverage"
     ],
-    "author": "GP <me@httgp.com>",
+    "author": "LucasBadico <lucasbadico@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "@actions/core": "^1.2.0",
-        "@actions/exec": "^1.0.1",
         "node-fetch": "^2.6.0"
     },
     "devDependencies": {
